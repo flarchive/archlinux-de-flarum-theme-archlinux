@@ -1,0 +1,39 @@
+name: Arch Linux Theme PHP
+
+on: [workflow_dispatch, push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ["8.3", "8.4", "8.5"]
+        dependencies: [lowest, latest]
+    name: Unit tests on PHP ${{ matrix.php }} (${{ matrix.dependencies }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: curl, dom, gd, json, mbstring, openssl, tokenizer, zip
+          tools: composer:v2
+      - run: composer update --no-interaction --prefer-dist --prefer-stable ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }}
+      - run: composer test:unit
+
+  phpstan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dependencies: [lowest, latest]
+    name: PHP checks on PHP 8.5 (${{ matrix.dependencies }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: curl, dom, gd, json, mbstring, openssl, tokenizer, zip
+          tools: composer:v2
+      - run: composer update --no-interaction --prefer-dist --prefer-stable ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }}
+      - run: composer validate --strict --no-check-lock
+      - run: vendor/bin/phpcs
+      - run: composer analyse:phpstan
